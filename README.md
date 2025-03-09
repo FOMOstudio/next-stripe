@@ -1,15 +1,15 @@
-# next-ai-stream
+# next-stripe
 
 ```bash
-pnpm add next-stripe
+pnpm add next-stripe stripe
 ```
 
 ```bash
-npm install next-stripe
+npm install next-stripe stripe
 ```
 
 ```bash
-yarn add next-stripe
+yarn add next-stripe stripe
 ```
 
 ## Overview
@@ -27,18 +27,23 @@ This package handles the complex parts of working with Stripe webhooks, so you c
 
 ## Usage
 
-### 1. Add OpenAI Client
+### 1. Add a stripe initialization util in your project
 
 ```typescript
-// src/ai/index.ts
-import OpenAI from "openai";
+// src/utils/stripe.ts
+import Stripe from "stripe";
 
-const client = new OpenAI({
-  apiKey: process.env.API_KEY,
-  baseURL: "https://api.x.ai/v1", // can use xAI API since it's compatible with OpenAI SDK
+const { STRIPE_SECRET_KEY } = process.env;
+
+// Check env var
+if (!STRIPE_SECRET_KEY) throw new Error("You must provide STRIPE env vars.");
+
+const stripe = new Stripe(STRIPE_NEW_SECRET_KEY, {
+  timeout: 80000,
+  maxNetworkRetries: 5,
 });
 
-export default client;
+export default stripe;
 ```
 
 ### 2. Add Next.js API Route
@@ -46,12 +51,17 @@ export default client;
 ```typescript
 // src/app/api/stripe/webhooks.ts
 
+import stripe from "@/utils/stripe";
 import { createAIChatStreamRouteHandlers } from "next-stripe";
 
 export const dynamic = "force-dynamic";
 
-export const { POST } = createStripeWebhookHandlers({
-  client,
-  model: "grok-2-latest", // use whatever model you want
+export const { POST } = createStripeWebhookRouter({
+  stripe,
+  webhookSigningSecret: process.env.STRIPE_WEBHOOK_SIGNIN_SECRET! // whsec_XXXX,
+  // Prevent getting outdated data when Stripe send webhooks in wrong order
+  autoRefetchSubscriptionData: true,
+  // Add the handlers used by your project
+  handlers: {},
 });
 ```
